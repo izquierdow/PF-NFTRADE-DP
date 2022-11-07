@@ -7,18 +7,24 @@ export default async function postLike(
 ) {
   try {
     if (req.method === 'PUT') {
-      const { userId, nftId } = req.body
-      console.log(userId, nftId)
+      const { userId, nftId, isLiked = false } = req.body
+
       const user = await prisma.user.findUnique({
         where: {
           id: userId as string,
         },
       })
-      console.log(user)
+
       if (!user) {
         res.status(400).send('el user no existe o es requerido')
       } else {
-        const nft = await prisma.nft.findUnique({
+        const nft = await prisma.nft.update({
+          data: {
+            likedBy: {
+              connect: !isLiked ? { id: user.id } : undefined,
+              disconnect: isLiked ? { id: user.id } : undefined,
+            },
+          },
           where: {
             id: nftId as string,
           },
@@ -26,40 +32,6 @@ export default async function postLike(
             likedBy: true,
           },
         })
-        const arr = nft?.likedBy.map((acc) => acc.id)
-        console.log(arr)
-        if (arr?.includes(userId)) {
-          const newArr = nft?.likedBy.filter((acc) => acc.id !== userId)
-          const nftt = await prisma.nft.update({
-            data: {
-              likedBy: {
-                set: newArr,
-              },
-            },
-            where: {
-              id: nftId as string,
-            },
-            include: {
-              likedBy: true,
-            },
-          })
-          console.log(nftt)
-        } else {
-          const nftt = await prisma.nft.update({
-            data: {
-              likedBy: {
-                connect: { id: user.id },
-              },
-            },
-            where: {
-              id: nftId as string,
-            },
-            include: {
-              likedBy: true,
-            },
-          })
-          console.log(nftt)
-        }
         const msg = {
           message: 'nft actualizado',
           data: nft,
@@ -67,7 +39,7 @@ export default async function postLike(
         res.status(200).send(msg)
       }
     }
-  } catch (e: any) {
-    console.log(e.message)
+  } catch (e) {
+    console.log(e)
   }
 }
